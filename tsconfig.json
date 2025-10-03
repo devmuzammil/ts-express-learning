@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    // ✅ Important for modern imports
+    "esModuleInterop": true,
+
+    // Type checking
+    "strict": true,
+    "skipLibCheck": true,
+
+    // For debugging
+    "sourceMap": true
+  }
+}
