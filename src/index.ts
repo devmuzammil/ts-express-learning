@@ -1,14 +1,9 @@
-
 import express, { Request, Response, NextFunction } from "express";
 const app = express();
-app.use(express.json());
 const port = 3000;
 
 app.get('/', (req: Request, res: Response, next: NextFunction) => {
-    res.send('Welcome to Express+TS Journey');
+    res.send(`Welcome to Al-Hadi Book Store`);
 });
 
-app.get('/homepage', (req: Request, res: Response, next: NextFunction) => {
-    res.send('Hello from Homepage');
-});
-app.listen(port, () => console.log(`Server is Running at Port ${port}`));
+app.listen(port, () => console.log(`Server Running at Port ${port}`));
