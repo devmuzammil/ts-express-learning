@@ -13,8 +13,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Book {
+model User {
   id        Int      @id @default(autoincrement())
-  title     String
-  author    String
+  name      String
+  email     String
+  password  String
+  book      Book[]
+  createdAt DateTime @default(now())
+}
+
+model Book {
+  id     Int    @id @default(autoincrement())
+  title  String
+  author String
+  userid Int
+  user   User   @relation(fields: [userid], references: [id])
 }

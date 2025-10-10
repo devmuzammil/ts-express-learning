@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express, { Request, Response, NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
@@ -11,7 +13,7 @@ import cors from 'cors';
 
 const app = express();
 const port = 3000;
-const SECRET_KEY = "halry";
+const SECRET_KEY = process.env.SECRET_KEY as string;
 app.use(helmet());
 
 app.use(express.json());
