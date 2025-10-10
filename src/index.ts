@@ -1,4 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 import { z } from "zod";
 import path from "path";
 import multer from "multer";
@@ -21,6 +23,12 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
+
+app.use(cors({
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 let refreshTokens: string[] = [];
 
@@ -49,14 +57,12 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
 const BookSchema = z.object({
     title: z.string().min(1, "Title is required"),
     author: z.string().min(1, "Author is required"),
-    year: z.number().min(1900, "Year must be valid"),
 });
 
 interface Book {
     id: number;
     title: string;
     author: string;
-    year: number;
 }
 
 // ==================== Multer Setup ====================
@@ -74,8 +80,8 @@ const upload = multer({ storage });
 
 // ==================== Dummy Data ====================
 let books: Book[] = [
-    { id: 1, title: "Atomic Habits", author: "James Clear", year: 2018 },
-    { id: 2, title: "The Alchemist", author: "Paulo Coelho", year: 1988 },
+    { id: 1, title: "Atomic Habits", author: "James Clear" },
+    { id: 2, title: "The Alchemist", author: "Paulo Coelho" },
 ];
 
 app.use(logger);
@@ -88,20 +94,21 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 // Get All Books
-app.get("/books", (req: Request, res: Response) => {
+app.get("/books", async (req: Request, res: Response) => {
+    const books = await prisma.book.findMany();
     res.json(books);
 });
 
 // Get Single Book
-app.get("/books/:id", (req: Request, res: Response) => {
+app.get("/books/:id", async (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const book = books.find((b) => b.id === id);
+    const book = await prisma.book.findUnique({ where: { id } })
     if (!book) return res.status(404).json({ message: "Book not found" });
     res.json(book);
 });
 
 // Add Book
-app.post("/books", (req: Request, res: Response) => {
+app.post("/books", async (req: Request, res: Response) => {
     const parsedData = BookSchema.safeParse(req.body);
     if (!parsedData.success) {
         return res.status(400).json({
@@ -109,16 +116,20 @@ app.post("/books", (req: Request, res: Response) => {
             errors: parsedData.error.issues,
         });
     }
+    const { title, author } = parsedData.data;
 
-    const newBook = { id: Date.now(), ...parsedData.data };
-    books.push(newBook);
+    const newBook = await prisma.book.create({
+        data: {
+            title, author
+        }
+    });
     res.status(201).json({ message: "Book added successfully", book: newBook });
 });
 
 // Update Book
-app.put("/books/:id", (req: Request, res: Response) => {
+app.put("/books/:id", async (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const book = books.find((b) => b.id === id);
+    const book = await prisma.book.findUnique({ where: { id } });
     if (!book) return res.status(404).json({ message: "Book not found" });
 
     const parsedData = BookSchema.partial().safeParse(req.body);
@@ -128,18 +139,17 @@ app.put("/books/:id", (req: Request, res: Response) => {
             errors: parsedData.error.issues,
         });
     }
-
-    Object.assign(book, parsedData.data);
-    res.json({ message: "Book updated successfully", book });
+    const { title, author } = parsedData.data;
+    const updateBook = await prisma.book.update({ where: { id }, data: { title, author } });
+    res.json({ message: "Book updated successfully", updateBook });
 });
 
 // Delete Book
-app.delete("/books/:id", (req: Request, res: Response) => {
+app.delete("/books/:id", async (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const index = books.findIndex((b) => b.id === id);
-    if (index === -1) return res.status(404).json({ message: "Book not found" });
-
-    books.splice(index, 1);
+    await prisma.book.delete({
+        where: { id }
+    })
     res.json({ message: "Book deleted successfully" });
 });
 
