@@ -59,6 +59,13 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
 const BookSchema = z.object({
     title: z.string().min(1, "Title is required"),
     author: z.string().min(1, "Author is required"),
+    userid: z.number()
+});
+
+const SignupSchema = z.object({
+    name: z.string().min(1, 'name is required'),
+    email: z.string().min(1, 'email is required'),
+    password: z.string().min(1, 'password is required')
 });
 
 interface Book {
@@ -118,12 +125,10 @@ app.post("/books", async (req: Request, res: Response) => {
             errors: parsedData.error.issues,
         });
     }
-    const { title, author } = parsedData.data;
+    const { title, author, userid } = parsedData.data;
 
     const newBook = await prisma.book.create({
-        data: {
-            title, author
-        }
+        data: { title, author, user: { connect: { id: userid } } }
     });
     res.status(201).json({ message: "Book added successfully", book: newBook });
 });
@@ -224,6 +229,69 @@ app.get("/profile", authMiddleware, (req: Request, res: Response) => {
         message: "Access granted to profile!",
         user,
     });
+});
+
+app.post('/user', async (req: Request, res: Response) => {
+    const parsedData = SignupSchema.safeParse(req.body);
+    if (!parsedData.success) return res.status(400).json({
+        message: 'Validation Error',
+        errors: parsedData.error.issues
+    });
+    const { name, email, password } = parsedData.data;
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            email,
+        }
+    });
+    if (existingUser) return res.status(400).json({ message: 'User Exist Already' });
+    const newUser = await prisma.user.create({
+        data: {
+            name, email, password
+        }
+    })
+    res.status(201).json({
+        message: 'User Created Successfully',
+        user: newUser
+    })
+});
+
+app.post('/users/:userId/books', async (req: Request, res: Response) => {
+    const userId = Number(req.params.userId);
+    const parsedData = BookSchema.safeParse(req.body);
+    if (!parsedData.success) {
+        return res.status(400).json({ message: 'Inavlid Credentials', errors: parsedData.error.issues })
+    }
+    const { title, author } = parsedData.data;
+
+    const user = await prisma.user.findFirst({
+        where: { id: userId }
+    });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const newBook = await prisma.book.create({
+        data: { title, author, user: { connect: { id: userId } } }
+    });
+    res.status(201).json({
+        message: "Book added successfully for the user",
+        book: newBook,
+    });
+});
+
+app.get('/book-with-users', async (req: Request, res: Response) => {
+    const books = await prisma.book.findMany({ include: { user: true } });
+    res.json(books);
+
+});
+
+app.get('/users/:userId/books', async (req: Request, res: Response) => {
+    const userId = Number(req.params.userId);
+    const userWithBooks = await prisma.user.findMany({
+        where: { id: userId },
+        include: { book: true }
+    });
+    if (!userWithBooks) {
+        return res.status(404).json({ message: "User not found" });
+    }
+    res.json(userWithBooks);
 });
 
 // ==================== Start Server ====================
