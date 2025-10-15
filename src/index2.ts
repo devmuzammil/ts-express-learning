@@ -1,11 +1,10 @@
 import express from "express";
-import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from "express-rate-limit";
+import { ENV } from "./config/envConfig";
 import userRouter from './routes/userRoutes';
 import bookRouter from './routes/bookRoutes';
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
