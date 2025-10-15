@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 dotenv.config();
 import express, { Request, Response, NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
 import { z } from "zod";
 import path from "path";
 import multer from "multer";
@@ -10,6 +9,8 @@ import jwt from "jsonwebtoken";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cors from 'cors';
+import bcrypt from 'bcrypt';
+const prisma = new PrismaClient();
 
 const app = express();
 const port = 3000;
@@ -117,7 +118,7 @@ app.get("/books/:id", async (req: Request, res: Response) => {
 });
 
 // Add Book
-app.post("/books", async (req: Request, res: Response) => {
+app.post("/books", authMiddleware, async (req: Request, res: Response) => {
     const parsedData = BookSchema.safeParse(req.body);
     if (!parsedData.success) {
         return res.status(400).json({
@@ -134,7 +135,7 @@ app.post("/books", async (req: Request, res: Response) => {
 });
 
 // Update Book
-app.put("/books/:id", async (req: Request, res: Response) => {
+app.put("/books/:id", authMiddleware, async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const book = await prisma.book.findUnique({ where: { id } });
     if (!book) return res.status(404).json({ message: "Book not found" });
@@ -152,7 +153,7 @@ app.put("/books/:id", async (req: Request, res: Response) => {
 });
 
 // Delete Book
-app.delete("/books/:id", async (req: Request, res: Response) => {
+app.delete("/books/:id", authMiddleware, async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     await prisma.book.delete({
         where: { id }
@@ -161,7 +162,7 @@ app.delete("/books/:id", async (req: Request, res: Response) => {
 });
 
 // Upload Book Cover
-app.post("/upload-book-cover", upload.single("cover"), (req: Request, res: Response) => {
+app.post("/upload-book-cover", authMiddleware, upload.single("cover"), (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
     res.json({
         message: "File uploaded successfully",
@@ -173,24 +174,23 @@ app.post("/upload-book-cover", upload.single("cover"), (req: Request, res: Respo
 // ==================== Auth Routes ====================
 
 // Login Route
-app.post("/login", (req: Request, res: Response) => {
-    const { username, password } = req.body;
+app.post("/login", async (req: Request, res: Response) => {
+    const { email, password } = req.body;
+    const user = await prisma.user.findFirst({
+        where: { email }
+    });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) return res.status(401).json({ message: "Invalid credentials" });
+    const accesstoken = jwt.sign({ email }, SECRET_KEY, { expiresIn: "15m" });
+    const refreshtoken = jwt.sign({ email }, SECRET_KEY, { expiresIn: "7d" });
+    refreshTokens.push(refreshtoken);
 
-    // Dummy user check
-    if (username === "muzammil" && password === "1234") {
-        const accesstoken = jwt.sign({ username }, SECRET_KEY, { expiresIn: "15m" });
-        const refreshtoken = jwt.sign({ username }, SECRET_KEY, { expiresIn: "7d" });
-
-        refreshTokens.push(refreshtoken);
-
-        res.json({
-            message: "Login successful!",
-            accesstoken,
-            refreshtoken,
-        });
-    } else {
-        res.status(401).json({ message: "Invalid credentials" });
-    }
+    res.json({
+        message: "Login successful!",
+        accesstoken,
+        refreshtoken,
+    });
 });
 
 // Refresh Token Route
@@ -216,7 +216,7 @@ app.post("/refresh", (req: Request, res: Response) => {
 });
 
 // Logout Route
-app.post("/logout", (req: Request, res: Response) => {
+app.post("/logout", authMiddleware, (req: Request, res: Response) => {
     const { token } = req.body;
     refreshTokens = refreshTokens.filter((t) => t !== token);
     res.json({ message: "Logged out successfully" });
@@ -238,6 +238,7 @@ app.post('/user', async (req: Request, res: Response) => {
         errors: parsedData.error.issues
     });
     const { name, email, password } = parsedData.data;
+    const hashedpassword = await bcrypt.hash(password, 10);
     const existingUser = await prisma.user.findFirst({
         where: {
             email,
@@ -246,7 +247,7 @@ app.post('/user', async (req: Request, res: Response) => {
     if (existingUser) return res.status(400).json({ message: 'User Exist Already' });
     const newUser = await prisma.user.create({
         data: {
-            name, email, password
+            name, email, password: hashedpassword
         }
     })
     res.status(201).json({
@@ -255,11 +256,11 @@ app.post('/user', async (req: Request, res: Response) => {
     })
 });
 
-app.post('/users/:userId/books', async (req: Request, res: Response) => {
+app.post('/users/:userId/books', authMiddleware, async (req: Request, res: Response) => {
     const userId = Number(req.params.userId);
     const parsedData = BookSchema.safeParse(req.body);
     if (!parsedData.success) {
-        return res.status(400).json({ message: 'Inavlid Credentials', errors: parsedData.error.issues })
+        return res.status(400).json({ message: 'Invalid Credentials', errors: parsedData.error.issues })
     }
     const { title, author } = parsedData.data;
 
@@ -276,15 +277,14 @@ app.post('/users/:userId/books', async (req: Request, res: Response) => {
     });
 });
 
-app.get('/book-with-users', async (req: Request, res: Response) => {
+app.get('/book-with-users', authMiddleware, async (req: Request, res: Response) => {
     const books = await prisma.book.findMany({ include: { user: true } });
     res.json(books);
-
 });
 
-app.get('/users/:userId/books', async (req: Request, res: Response) => {
+app.get('/users/:userId/books', authMiddleware, async (req: Request, res: Response) => {
     const userId = Number(req.params.userId);
-    const userWithBooks = await prisma.user.findMany({
+    const userWithBooks = await prisma.user.findFirst({
         where: { id: userId },
         include: { book: true }
     });

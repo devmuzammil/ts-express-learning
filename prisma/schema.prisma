@@ -28,4 +28,6 @@ model Book {
   author String
   userid Int
   user   User   @relation(fields: [userid], references: [id])
+
+  @@index([author])
 }
