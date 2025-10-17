@@ -26,7 +26,7 @@ export const createBook = async (req: Request, res: Response, next: NextFunction
     } catch (err) {
         next(err);
     }
-}
+};
 export const getBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const books = await prisma.book.findMany({ include: { user: true } });
@@ -34,7 +34,7 @@ export const getBook = async (req: Request, res: Response, next: NextFunction) =
     } catch (err) {
         next(err);
     }
-}
+};
 export const getBookbyId = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const bookId = Number(req.params.id);
@@ -44,7 +44,7 @@ export const getBookbyId = async (req: Request, res: Response, next: NextFunctio
     } catch (err) {
         next(err);
     }
-}
+};
 export const updateBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const bookId = Number(req.params.id);
@@ -64,7 +64,7 @@ export const updateBook = async (req: Request, res: Response, next: NextFunction
     } catch (err) {
         next(err);
     }
-}
+};
 export const deleteBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const bookId = Number(req.params.id);
