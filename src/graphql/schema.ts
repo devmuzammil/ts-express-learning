@@ -8,16 +8,18 @@ export const schema = buildSchema(`
         id:ID!
         name:String
         email:String!
+        books:[Book]
     }
     
     type Book {
         id:ID!
         title:String!
         author:String!
+        user:User
     }
     
     type Query {
-        books: [Books]
+        books: [Book]
         book(id:ID!):Book
     }`);
 

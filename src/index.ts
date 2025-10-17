@@ -1,7 +1,7 @@
+import { ENV } from "./config/envConfig";
 import express from "express";
 import cors from 'cors';
 import helmet from 'helmet';
-import { ENV } from "./config/envConfig";
 import userRouter from './routes/userRoutes';
 import bookRouter from './routes/bookRoutes';
 import { errorMiddleware } from "./middlewares/error";

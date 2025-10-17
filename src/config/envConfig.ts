@@ -1,5 +1,10 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+
+// Load from project root .env first (if present)
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+// Then attempt to load from src/.env without overriding existing values
+dotenv.config({ path: path.resolve(process.cwd(), 'src', '.env'), override: false });
 
 if (!process.env.DATABASE_URL) {
     throw new Error('Database Url missing in .env file');
