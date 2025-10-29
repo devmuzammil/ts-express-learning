@@ -18,9 +18,7 @@ export const createBook = async (req: Request, res: Response, next: NextFunction
             });
         }
         const { title, author, userid } = parsedData.data;
-        const book = await prisma.book.create({
-            data: { title, author, user: { connect: { id: userid } } }
-        });
+        const book = await prisma.book.create({ data: { title, author, user: { connect: { id: userid } } } });
         res.status(201).json({ message: 'Book Created Successfully', book });
 
     } catch (err) {
