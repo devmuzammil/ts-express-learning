@@ -45,7 +45,7 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
     } catch (err) {
         next(err);
     }
-}
+};
 
 export const loginUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -74,4 +74,4 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
     } catch (err) {
         next(err);
     }
-}
+};
